@@ -1,3 +1,10 @@
+// Examples
+// > 346010
+// 555 * 577 + 25775 = 346010
+// > 6432
+// 25 * 27 + 5757 = 6432
+// 22 * 55 + 5222 = 6432
+
 #include <assert.h>
 #include <inttypes.h>
 #include <math.h>
