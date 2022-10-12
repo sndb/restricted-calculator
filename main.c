@@ -23,11 +23,10 @@ main(void) {
 	struct results *r = solve(k);
 	struct results *c = r;
 	while (c) {
-		printf("%d * %d + %d = %d\n",
-		       c->solution.x,
-		       c->solution.y,
-		       c->solution.n,
-		       k);
+		if (c->solution.n != 0)
+			printf("%d * %d + %d = %d\n", c->solution.x, c->solution.y, c->solution.n, k);
+		else
+			printf("%d * %d = %d\n", c->solution.x, c->solution.y, k);
 		c = c->next;
 	}
 	results_free(r);
