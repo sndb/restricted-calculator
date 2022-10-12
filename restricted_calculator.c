@@ -1,36 +1,48 @@
-// Examples
-// > 346010
-// 555 * 577 + 25775 = 346010
-// > 6432
-// 25 * 27 + 5757 = 6432
-// 22 * 55 + 5222 = 6432
+#include "restricted_calculator.h"
 
 #include <assert.h>
 #include <inttypes.h>
-#include <math.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-uint8_t alphabet[]    = {2, 5, 7};
-size_t  alphabet_size = sizeof(alphabet) / sizeof(*alphabet);
+static uint8_t alphabet[] = {2, 5, 7};
 
-struct solution {
-	uint32_t x, y;
-	uint32_t a;
-};
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
-bool
-in_alphabet(uint8_t k) {
-	for (size_t i = 0; i < alphabet_size; i++)
-		if (k == alphabet[i])
+static uint8_t
+count_digits(uint32_t n) {
+	uint8_t l = 0;
+	for (; n > 0; n /= 10)
+		l++;
+	return l;
+}
+
+static uint32_t
+power(uint32_t n, uint8_t p) {
+	uint32_t r = 1;
+	for (uint8_t i = 0; i < p; i++)
+		r *= n;
+	return r;
+}
+
+static uint32_t
+sum_of_powers(uint32_t n, uint8_t p) {
+	uint32_t r = 0;
+	for (uint8_t i = 1; i <= p; i++)
+		r += power(n, i);
+	return r;
+}
+
+static bool
+in_alphabet(uint8_t digit) {
+	for (size_t i = 0; i < ARRAY_SIZE(alphabet); i++)
+		if (digit == alphabet[i])
 			return true;
 	return false;
 }
 
-bool
+static bool
 verify_number(uint32_t n) {
 	while (n > 0) {
 		if (!in_alphabet(n % 10))
@@ -40,107 +52,66 @@ verify_number(uint32_t n) {
 	return true;
 }
 
-bool
-verify_solution(struct solution s, uint32_t k) {
-	return verify_number(s.x) && verify_number(s.y) && verify_number(s.a)
-	    && s.x * s.y + s.a == k;
+static bool
+verify_solution(struct solution s, uint32_t answer) {
+	return verify_number(s.x)
+	    && verify_number(s.y)
+	    && verify_number(s.n)
+	    && s.x * s.y + s.n == answer;
 }
 
-struct node {
-	struct solution s;
-	struct node    *next;
-};
+static uint32_t *
+permutations(uint8_t len) {
+	uint32_t *r = malloc(sizeof(uint32_t[sum_of_powers(ARRAY_SIZE(alphabet), len)]));
+	for (size_t i = 0; i < ARRAY_SIZE(alphabet); i++)
+		r[i] = alphabet[i];
+	uint32_t offset = ARRAY_SIZE(alphabet);
+	uint32_t prev = power(ARRAY_SIZE(alphabet), 1);
+	for (size_t i = 2; i <= len; i++) {
+		for (size_t j = 0; j < prev; j++)
+			for (size_t k = 0; k < ARRAY_SIZE(alphabet); k++)
+				r[offset + j * ARRAY_SIZE(alphabet) + k]
+					= r[offset - prev + j] * 10 + alphabet[k];
+		prev = power(ARRAY_SIZE(alphabet), i);
+		offset += prev;
+	}
+	return r;
+}
 
-struct node *
-new_node(struct solution s, struct node *next) {
-	struct node *n = malloc(sizeof(struct node));
-	n->s           = s;
-	n->next        = next;
+static struct results *
+results_new(struct solution s, struct results *next) {
+	struct results *n = malloc(sizeof(struct results));
+	n->solution = s;
+	n->next = next;
 	return n;
 }
 
 void
-free_node(struct node *n) {
-	struct node *p;
-	while (n) {
-		p = n;
-		n = n->next;
+results_free(struct results *r) {
+	struct results *p;
+	while (r) {
+		p = r;
+		r = r->next;
 		free(p);
 	}
 }
 
-uint32_t *
-cartesian_product(uint8_t n, size_t *r_size) {
-	assert(n != 0);
-	if (n == 1) {
-		uint32_t *r = malloc(sizeof(uint32_t[alphabet_size]));
-		for (size_t i = 0; i < alphabet_size; i++)
-			r[i] = alphabet[i];
-		*r_size = alphabet_size;
-		return r;
-	}
-	size_t    p_size;
-	uint32_t *p = cartesian_product(n - 1, &p_size);
-	size_t    s = alphabet_size * p_size;
-	uint32_t *r = malloc(sizeof(uint32_t[s]));
-	for (size_t i = 0; i < p_size; i++)
-		for (size_t j = 0; j < alphabet_size; j++)
-			r[i * alphabet_size + j] = p[i] * 10 + alphabet[j];
-	free(p);
-	*r_size = s;
-	return r;
-}
-
-uint32_t *
-cartesian_product_sum(uint8_t n, size_t *r_size) {
-	size_t s = 0, a = 1;
-	for (uint8_t i = 0; i < n; i++) {
-		a *= alphabet_size;
-		s += a;
-	}
-	uint32_t *r      = malloc(sizeof(uint32_t[s]));
-	size_t    offset = 0;
-	for (uint8_t i = 1; i <= n; i++) {
-		size_t    p_size;
-		uint32_t *p = cartesian_product(i, &p_size);
-		memcpy(r + offset, p, sizeof(uint32_t[p_size]));
-		free(p);
-		offset += p_size;
-	}
-	*r_size = s;
-	return r;
-}
-
-struct node *
+struct results *
 solve(uint32_t k) {
-	uint8_t n = 0;
-	for (uint8_t j = k; j > 0; j /= 10)
-		n++;
-	size_t    p_size;
-	uint32_t *p = cartesian_product_sum(n, &p_size);
+	uint8_t d = count_digits(k);
+	uint32_t *p = permutations(d);
+	size_t p_len = sum_of_powers(ARRAY_SIZE(alphabet), d);
 
-	struct node *r = NULL;
-	for (size_t i = 0; i < p_size; i++) {
-		for (size_t j = i; j < p_size; j++) {
+	struct results *r = NULL;
+	for (size_t i = 0; i < p_len; i++) {
+		for (size_t j = i; j < p_len; j++) {
+			if (p[i] * p[j] > k)
+				continue;
 			struct solution s = {p[i], p[j], k - p[i] * p[j]};
 			if (verify_solution(s, k))
-				r = new_node(s, r);
+				r = results_new(s, r);
 		}
 	}
 	free(p);
 	return r;
-}
-
-int
-main(void) {
-	uint32_t k;
-	scanf("%" SCNu32, &k);
-	struct node *s = solve(k);
-	struct node *c = s;
-	while (c) {
-		printf("%d * %d + %d = %d\n", c->s.x, c->s.y, c->s.a, k);
-		c = c->next;
-	}
-	free_node(s);
-	return 0;
 }
