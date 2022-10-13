@@ -20,8 +20,8 @@ int
 main(void) {
 	uint32_t k;
 	scanf("%" SCNu32, &k);
-	struct results *r = solve(k);
-	struct results *c = r;
+	struct result *r = solve(k);
+	struct result *c = r;
 	while (c) {
 		if (c->solution.n != 0)
 			printf("%d * %d + %d = %d\n", c->solution.x, c->solution.y, c->solution.n, k);
@@ -29,6 +29,6 @@ main(void) {
 			printf("%d * %d = %d\n", c->solution.x, c->solution.y, k);
 		c = c->next;
 	}
-	results_free(r);
+	result_free(r);
 	return 0;
 }

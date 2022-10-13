@@ -4,10 +4,10 @@ struct solution {
 	uint32_t x, y, n;
 };
 
-struct results {
+struct result {
 	struct solution solution;
-	struct results *next;
+	struct result *next;
 };
 
-struct results *solve(uint32_t k);
-void results_free(struct results *r);
+struct result *solve(uint32_t k);
+void result_free(struct result *r);
